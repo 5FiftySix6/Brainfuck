@@ -93,9 +93,11 @@ namespace Brainfuck
         {
             void HandleBracket(char c, int ind)
             {
-                (string line, int pos) = GetLinePosOfChar(text, ind);
+                (int lineNum, string line, int pos) = GetLinePosOfChar(text, ind);
 
-                Console.WriteLine($"{c} at position {pos} is missing matching ] on following line:");
+                char op = c == '[' ? ']' : '[';
+
+                Console.WriteLine($"'{c}' at position {pos} on line {lineNum} is missing matching '{op}':");
                 Console.WriteLine("> " + line);
                 Console.WriteLine(new string(' ', pos + 2) + "^");
             }
@@ -129,7 +131,7 @@ namespace Brainfuck
             return false;
         }
 
-        private static (string, int) GetLinePosOfChar(string text, int ind)
+        private static (int, string, int) GetLinePosOfChar(string text, int ind)
         {
             int lineStart = text.LastIndexOf('\n', ind) + 1;
 
@@ -139,7 +141,9 @@ namespace Brainfuck
                 ? text.Length - lineStart
                 : lineEnd - lineStart;
 
-            return (text.Substring(lineStart, length), ind - lineStart);
+            int lineNum = text.Substring(0, lineStart).Count(x => x == '\n') + 1;
+
+            return (lineNum, text.Substring(lineStart, length), ind - lineStart);
         }
     }
 }
