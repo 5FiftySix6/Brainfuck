@@ -34,7 +34,7 @@ namespace Brainfuck
             if (!CheckBrackets(text)) return;
 
             // 30,000 is the typical size for brainfuck.
-            char* mem = stackalloc char[30000];
+            byte* mem = stackalloc byte[30000];
 
             Stack<int> jmp = new Stack<int>();
 
@@ -57,10 +57,10 @@ namespace Brainfuck
                         (*mem)--;
                         break;
                     case ',':
-                        *mem = Console.ReadKey().KeyChar;
+                        *mem = (byte) Console.ReadKey().KeyChar;
                         break;
                     case '.':
-                        Console.Write(*mem);
+                        Console.Write(char.ConvertFromUtf32(*mem));
                         break;
                     case '[' when *mem != 0:
                         jmp.Push(i);
