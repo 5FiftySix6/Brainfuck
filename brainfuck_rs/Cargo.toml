@@ -1,0 +1,7 @@
+[package]
+name = "brainfuck_rs"
+version = "0.1.0"
+authors = ["5FiftySix6 <ybham6@gmail.com>"]
+edition = "2018"
+
+[dependencies]
