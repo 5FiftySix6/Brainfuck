@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+int run(char* buffer, char** mem_ptr);
+
 
 int main(int argc, char* argv[])
 {
@@ -21,13 +23,31 @@ int main(int argc, char* argv[])
 	if (!f)
 	{
 		fprintf(stderr, "File [%s] does not exist!\n", argv[1]);
+		return -1;
 	}
 
 	char* mem = malloc(sizeof(char) * 30000);
 	memset(mem, 0, sizeof(char) * 30000);
+
+	char* buffer = NULL;
+	size_t len;
+	ssize_t bytes_read = getdelim(&buffer, &len, '\0', f);
+
+	fclose(f);
+
+	if (bytes_read == -1)
+	{
+		fprintf(stderr, "Unable to read bytes.\n");
+	}
 	
-	int c;
-	while ( (c = fgetc(f)) != EOF)
+	return run(buffer, &mem);
+}
+
+int run(char* buffer, char** mem_ptr)
+{
+	char* mem = *mem_ptr;
+
+	for (int c = *buffer; c != '\0'; c = *(++buffer))
 	{
 		int brackets = 1;
 
@@ -56,9 +76,9 @@ int main(int argc, char* argv[])
 
 				while (brackets)
 				{
-					c = fgetc(f);
+					c = *(++buffer);
 
-					if (c == EOF)
+					if (c == '\0')
 					{
 						fprintf(stderr, "Expected character, got EOF\n");
 						return -1;
@@ -78,12 +98,9 @@ int main(int argc, char* argv[])
 			case ']':
 				if (!*mem) continue;
 
-				int brackets = 1;
-
 				while (brackets)
 				{
-					fseek(f, -2, SEEK_CUR);
-					c = fgetc(f);
+					c = *(--buffer);
 
 					if (c == '[')
 						brackets--;
@@ -95,8 +112,7 @@ int main(int argc, char* argv[])
 				break;
 		}
 	}
-
-	fclose(f);
-
+	
 	return 0;
+
 }
