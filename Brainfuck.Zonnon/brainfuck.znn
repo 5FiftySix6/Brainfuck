@@ -1,0 +1,90 @@
+module Program;
+
+import
+    System.Char as char,
+    System.Convert as Convert,
+    System.IO.File as File,
+    System.IO.FileStream as FileStream;
+
+procedure {private} Interpret(text: string);
+var
+    mem : array 30000 of integer; (* byte arithmetic doesn't work *)
+    ptr : integer; (* integer type is incompatible with System int types, but you have to use it for + to work *)
+    jmp : array 1024 of integer; (* Couldn't get Stack to work either *)
+    jmpPos : integer;
+    i : integer;
+    c : char; (* Idk how this type works when nothing else does *)
+    brackets : integer;
+begin
+    ptr := 0;
+    jmpPos := 0;
+    i := 0;
+    
+    while i < text.Length do
+        c := text[i];
+        
+        if c == '>' then
+            ptr := ptr + 1;
+        elsif c == '<' then
+            ptr := ptr - 1;
+        elsif c == '+' then
+            mem[ptr] := mem[ptr] + 1;
+            if mem[ptr] > 255 then
+                mem[ptr] := 0;
+            end;
+        elsif c == '-' then
+            mem[ptr] := mem[ptr] - 1;
+            if mem[ptr] < 0 then
+                mem[ptr] := 255;
+            end;
+        elsif c == ',' then
+            read(mem[ptr]);
+        elsif c == '.' then
+            write(Convert.ToChar(mem[ptr]))
+        elsif c == '[' then
+            if mem[ptr] == 0 then
+                brackets := 1;
+                
+                while brackets > 0 do
+                    i := i + 1;
+                    
+                    if text[i] == '[' then
+                        brackets := brackets + 1;
+                    elsif text[i] == ']' then
+                        brackets := brackets - 1;
+                    end;
+                end;
+            else
+                jmp[jmpPos] := i;
+                jmpPos := jmpPos + 1;
+            end;
+        elsif c == ']' then
+            if mem[ptr] == 0 then
+                if jmpPos > 0 then
+                    jmpPos := jmpPos - 1;
+                end;
+            elsif jmpPos > 0 then
+                i := jmp[jmpPos - 1];
+            end;
+        end;
+        
+        i := i + 1;
+    end;
+end Interpret;
+
+var
+    filePath: string;
+    text: string;
+begin
+    writeln("Enter the path of the brainfuck file to run");
+    readln(filePath);
+    
+    if ~File.Exists(filePath) then
+        writeln("File not found");
+        readln;
+        return
+    end;
+    
+    Interpret(File.ReadAllText(filePath));
+    readln;
+end Program.
