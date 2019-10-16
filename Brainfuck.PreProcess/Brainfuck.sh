@@ -4,7 +4,7 @@ if [ "$#" -ne 1 ]; then
   exit -1
 fi
 cp $1 tmpFile
-sed -i 's/[a-Z]//g' tmpFile
+sed -i 's/[a-zA-Z]//g' tmpFile
 sed -i 's/</L /g' tmpFile
 sed -i 's/>/R /g' tmpFile
 sed -i 's/+/A /g' tmpFile
@@ -13,6 +13,7 @@ sed -i 's/\./P /g' tmpFile
 sed -i 's/,/G /g' tmpFile
 sed -i 's/\[/W /g' tmpFile
 sed -i 's/\]/E /g' tmpFile
+sed -i 's/[^ LRASPGWE]//g' tmpFile
 
 echo '#include "Brainfuck.h"' > tmpFile.c
 echo 'BRAINFUCK_START' >> tmpFile.c
