@@ -54,10 +54,10 @@ getVal :: Tape a -> a
 getVal (Tape _ x _) = x
 
 eval :: Instruction -> Brainfuck ()
-eval Inc = modify' $ modifyVal (+ 1)
-eval Dec = modify' $ modifyVal (+ (- 1))
-eval Forwards = modify' forwards
-eval Backwards = modify' backwards
+eval Inc = modify $! modifyVal (+ 1)
+eval Dec = modify $! modifyVal (+ (- 1))
+eval Forwards = modify forwards
+eval Backwards = modify backwards
 eval Write = gets getVal >>= liftIO . putChar . chr . fromEnum
 eval Read = liftIO getChar >>= modify . modifyVal . const . toEnum . ord
 eval loop@(Loop inner) = gets getVal >>= exec
