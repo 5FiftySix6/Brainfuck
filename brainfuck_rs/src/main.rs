@@ -128,7 +128,6 @@ fn main() -> Result<(), String> {
     let args: Vec<String> = env::args().collect();
 
     if args.len() > 3 {
-        // writeln!("Got more than 2 arguments! Usage: {} FILE", &args[0]);
         return Err(format!(
             "Got more than 2 arguments! Usage: {} FILE",
             &args[0]
@@ -139,8 +138,6 @@ fn main() -> Result<(), String> {
             &args[0]
         ));
     }
-
-    // let out = if args.len() == 2 { "a.out" } else { &args[2] };
 
     let mut contents = String::new();
 

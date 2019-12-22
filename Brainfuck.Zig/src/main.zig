@@ -93,8 +93,6 @@ pub fn parse(file: []u8, allocator: *std.mem.Allocator) ParseError![]Instr {
                     } else {
                         shift -= 1;
                     }
-                    // TODO: if expression (if possible)
-                    // inc += if (true) 1 else -1;
                 }
 
                 // while loop above will increment us one over, but then so will the outer loop.
