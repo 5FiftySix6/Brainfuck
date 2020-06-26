@@ -1,10 +1,14 @@
 const std = @import("std");
+
 const os = std.os;
 const io = std.io;
 const process = std.process;
-const warn = std.debug.warn;
-const istream = std.io.InStream(std.os.ReadError);
-const ostream = std.io.OutStream(std.os.WriteError);
+const fs = std.fs;
+
+const istream = std.io.InStream(fs.File, os.ReadError, fs.File.read);
+const ostream = std.io.OutStream(fs.File, os.WriteError, fs.File.write);
+
+const OpenFlags = fs.File.OpenFlags;
 
 const Instr = union(enum) {
     Inc: i8,
@@ -15,7 +19,7 @@ const Instr = union(enum) {
 };
 
 pub fn main() !u8 {
-    var arena = std.heap.ArenaAllocator.init(std.heap.direct_allocator);
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
 
     const allocator = &arena.allocator;
@@ -24,34 +28,36 @@ pub fn main() !u8 {
     defer process.argsFree(allocator, args);
 
     if (args.len != 2) {
-        const stderr_file = try io.getStdErr();
+        const stderr_file = io.getStdErr();
         var stderr_stream = stderr_file.outStream();
-        var stderr = &stderr_stream.stream;
-        try stderr.print("Usage: {} FILE\n", args[0]);
+        try stderr_stream.print("Usage: {} FILE\n", .{args[0]});
         return 1;
     }
 
-    const file = try std.io.readFileAlloc(allocator, args[1]);
-    defer allocator.free(file);
+    const file = try fs.cwd().openFile(args[1], OpenFlags { .read = true, .write = false });
+    defer file.close();
 
-    const instrs = try parse(file, allocator);
+    const code = try allocator.alloc(u8, try file.getEndPos());
+    const len = try file.read(code);
+
+    const instrs = try parse(code, allocator);
 
     var mem = [_]u8{0} ** 30000;
 
-    var stdout_file = try io.getStdOut();
-    var stdin_file = try io.getStdIn();
+    var stdout_file = io.getStdOut();
+    var stdin_file = io.getStdIn();
 
-    var stdout = &stdout_file.outStream().stream;
-    var stdin = &stdin_file.inStream().stream;
+    var stdout = stdout_file.outStream();
+    var stdin = stdin_file.inStream();
 
-    try interpret(instrs, &mem, stdin, stdout);
+    try interpret(instrs, &mem, &stdin, &stdout);
 
     return 0;
 }
 
-const ParseError = error{
+const ParseError = error {
     UnmatchedBracket,
-    OutOfMemory,
+    OutOfMemory
 };
 
 pub fn parse(file: []u8, allocator: *std.mem.Allocator) ParseError![]Instr {
@@ -129,7 +135,7 @@ pub fn parse(file: []u8, allocator: *std.mem.Allocator) ParseError![]Instr {
         }
     }
 
-    return instrs.toSlice();
+    return instrs.items;
 }
 
 const InterpretError = error{
@@ -145,6 +151,7 @@ const InterpretError = error{
     IsDir,
     WouldBlock,
     EndOfStream,
+    ConnectionResetByPeer
 };
 
 pub fn interpret(instrs: []Instr, mem: []u8, in: *istream, out: *ostream) !void {
@@ -176,7 +183,7 @@ pub fn _interpret(instrs: []Instr, mem: []u8, m_ind: *usize, in: *istream, out: 
                 }
             },
             Instr.Read => mem[m_ind.*] = try in.readByte(),
-            Instr.Write => try out.print("{c}", mem[m_ind.*]),
+            Instr.Write => try out.print("{c}", .{mem[m_ind.*]}),
         }
     }
 }
