@@ -34,7 +34,11 @@ pub fn main() !u8 {
         return 1;
     }
 
-    const file = try fs.cwd().openFile(args[1], OpenFlags { .read = true, .write = false });
+    var buf : [std.fs.MAX_PATH_BYTES] u8 = undefined;
+    // Returns a slice of the buffer.
+    const path = try os.realpath(args[1], &buf);
+
+    const file = try fs.cwd().openFile(path, OpenFlags { .read = true, .write = false });
     defer file.close();
 
     const code = try allocator.alloc(u8, try file.getEndPos());
@@ -151,6 +155,7 @@ const InterpretError = error{
     IsDir,
     WouldBlock,
     EndOfStream,
+    ConnectionTimedOut,
     ConnectionResetByPeer
 };
 
