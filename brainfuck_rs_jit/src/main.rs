@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::io::{stdout, Read, Write};
+use std::io::{stdin, stdout, Read, Write};
 use std::{env, mem};
 
 use core::slice;
@@ -129,7 +129,21 @@ fn _emit(ops: &mut dynasmrt::Assembler<dynasmrt::x64::X64Relocation>, instrs: &[
                     ; => end_label
                 );
             }
-            Instruction::Read => (),
+            Instruction::Read => {
+                dynasm!(ops
+                    ; .arch x64
+                    // Backup current cell to shadow space
+                    ; mov [rsp + 0x40], r8
+                    // Call
+                    ; mov rax, QWORD read as _
+                    ; mov rcx, r8
+                    ; call rax
+                    // Restore registers
+                    ; mov r8,  [rsp + 0x40]
+                    ; mov rdx, [rsp + 0x38]
+                    ; mov rcx, [rsp + 0x30]
+                )
+            }
             Instruction::Write => {
                 dynasm!(ops
                     ; .arch x64
@@ -151,6 +165,12 @@ fn _emit(ops: &mut dynasmrt::Assembler<dynasmrt::x64::X64Relocation>, instrs: &[
 
 unsafe extern "win64" fn write(cell: *mut u8) {
     stdout().write_all(slice::from_raw_parts(cell, 1)).unwrap();
+}
+
+unsafe extern "win64" fn read(cell: *mut u8) {
+    stdin()
+        .read_exact(slice::from_raw_parts_mut(cell, 1))
+        .unwrap();
 }
 
 fn emit(instrs: &[Instruction]) {
@@ -182,8 +202,6 @@ fn emit(instrs: &[Instruction]) {
     let mut buffer: [u8; 30000] = [0; 30000];
 
     let prog = ops.finalize().unwrap();
-
-    let ptr = prog.as_ptr();
 
     let execute: extern "win64" fn(*mut u8, *mut u8) -> u8 =
         unsafe { mem::transmute(prog.ptr(start)) };
