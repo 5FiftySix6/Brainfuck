@@ -95,30 +95,16 @@ fn _emit(ops: &mut dynasmrt::Assembler<dynasmrt::x64::X64Relocation>, instrs: &[
     for i in instrs {
         match i {
             Instruction::Inc(i) => {
-                if *i > 0 {
-                    dynasm!(ops
-                        ; .arch x64
-                        ; add BYTE [r8], *i
-                    )
-                } else {
-                    dynasm!(ops
-                        ; .arch x64
-                        ; sub BYTE [r8], -(*i)
-                    )
-                }
+                dynasm!(ops
+                    ; .arch x64
+                    ; add BYTE [r8], *i
+                )
             }
             Instruction::Ptr(shift) => {
-                if *shift > 0 {
-                    dynasm!(ops
-                        ; .arch x64
-                        ; add r8, (*shift) as i32
-                    )
-                } else {
-                    dynasm!(ops
-                        ; .arch x64
-                        ; sub r8, -(*shift) as i32
-                    )
-                }
+                dynasm!(ops
+                    ; .arch x64
+                    ; add r8, (*shift) as i32
+                )
             }
             Instruction::Loop(sub) => {
                 let start_label = ops.new_dynamic_label();
