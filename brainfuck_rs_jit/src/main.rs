@@ -176,14 +176,60 @@ unsafe extern "win64" fn read(cell: *mut u8) {
 fn emit(instrs: &[Instruction]) {
     let mut ops = dynasmrt::x64::Assembler::new().unwrap();
 
+    /*
+     * Stack Overview
+     *
+     * This is part (32 bytes) of the block we choose to allocate (0x28 = 40 bytes)
+     * It's used as the shadow space for the functions we call, (read, write)
+     * as dictated by the win64 calling convention
+     * -------------
+     * [rsp + 0x00] - .
+     * [rsp + 0x08] - .
+     * [rsp + 0x10] - .
+     * [rsp + 0x18] - .
+     *
+     *
+     * This isn't really part of shadow space, but we want it for alignment.
+     * [rsp + 0x20] - .
+     *
+     * *Our* return address is stored before the shadow space of the functions we call
+     *
+     * [rsp + 0x28] - return address
+     *
+     * Shadow space (0x20 = 32 bytes) for our own function
+     * -------------
+     *
+     * [rsp + 0x30] - buffer start
+     * [rsp + 0x38] - buffer end
+     * [rsp + 0x40] - current cell, used before rust calls for (,/.)
+     *
+     *
+     * Registers
+     * ----------
+     * These are all volatile and have to be saved
+     * before calling a function
+     *
+     * r8   | active cell address
+     * rcx  | first param, buffer start
+     * rdx  | second param, buffer end
+     *
+     */
     let start = {
         let start = ops.offset();
 
+        // After a call instruction (rsp % 16) == 8.
+        // The call instruction will decrement rsp by 8, thus we need to make sure we allocate
+        // at least 8 bytes of stack space before making a call, even if we weren't using
+        // our shadow space.
         dynasm!(ops
             ; .arch x64
-            ; sub rsp, 0x28             // Allocate stack space (40 bytes)
-            ; mov [rsp + 0x30], rcx     // Store rcx in shadow space
-            ; mov [rsp + 0x38], rdx     // Store rdx in shadow space
+            ; sub rsp, 0x28             // Allocate shadow space (32 bytes) + 8 bytes (alignment)
+
+            // As of right now, we don't really need these as we don't do bounds checking.
+            // But it's there for if we want to.
+            ; mov [rsp + 0x30], rcx     // Store rcx in our shadow space
+            ; mov [rsp + 0x38], rdx     // Store rdx in our shadow space
+
             ; mov r8, rcx               // Set active cell to start of tape.
         );
 
