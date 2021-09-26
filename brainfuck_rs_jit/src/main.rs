@@ -7,6 +7,7 @@ use dynasmrt::{dynasm, DynasmApi, DynasmLabelApi};
 
 #[derive(Debug)]
 enum Instruction {
+    Zero,
     Inc(i8),
     Ptr(isize),
     Loop(Vec<Instruction>),
@@ -94,18 +95,14 @@ fn _emit(ops: &mut dynasmrt::Assembler<dynasmrt::x64::X64Relocation>, instrs: &[
     //
     for i in instrs {
         match i {
-            Instruction::Inc(i) => {
-                dynasm!(ops
-                    ; .arch x64
-                    ; add BYTE [r8], *i
-                )
-            }
-            Instruction::Ptr(shift) => {
-                dynasm!(ops
-                    ; .arch x64
-                    ; add r8, (*shift) as i32
-                )
-            }
+            Instruction::Inc(i) => dynasm!(ops
+                ; .arch x64
+                ; add BYTE [r8], *i
+            ),
+            Instruction::Ptr(shift) => dynasm!(ops
+                ; .arch x64
+                ; add r8, (*shift) as i32
+            ),
             Instruction::Loop(sub) => {
                 let start_label = ops.new_dynamic_label();
                 let end_label = ops.new_dynamic_label();
@@ -158,7 +155,13 @@ fn _emit(ops: &mut dynasmrt::Assembler<dynasmrt::x64::X64Relocation>, instrs: &[
                     ; mov rdx, [rsp + 0x38]
                     ; mov rcx, [rsp + 0x30]
                 )
-            }
+            },
+            Instruction::Zero => {
+                dynasm!(ops
+                    ; .arch x64
+                    ; mov BYTE [r8], 0
+                )
+             }
         }
     }
 }
@@ -257,6 +260,28 @@ fn emit(instrs: &[Instruction]) {
     }
 }
 
+fn conv_sets(instrs: &mut [Instruction]) {
+    for instr in instrs {
+        match instr {
+            Instruction::Loop(inner) => {
+                if inner.len() != 1 {
+                    conv_sets(inner);
+
+                    continue
+                }
+
+                match inner[0] {
+                    Instruction::Inc(_) => (),
+                    _ => continue
+                }
+
+                *instr = Instruction::Zero;
+            }
+            _ => ()
+        }
+    }
+}
+
 fn read_file(f_name: &str, contents: &mut String) -> Result<(), std::io::Error> {
     let mut file = File::open(f_name)?;
     file.read_to_string(contents)?;
@@ -282,7 +307,11 @@ fn main() -> Result<(), String> {
         return Err(format!("Unable to read file! {}", err));
     }
 
-    emit(&parse(&contents));
+    let mut instrs = parse(&contents);
+
+    conv_sets(&mut instrs);
+
+    emit(&instrs);
 
     Ok(())
 }
